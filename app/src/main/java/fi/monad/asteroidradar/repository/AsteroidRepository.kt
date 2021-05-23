@@ -18,6 +18,11 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import timber.log.Timber
 
+sealed class AsteroidQuery
+object All : AsteroidQuery()
+data class Span(val from: String, val to: String) : AsteroidQuery()
+data class On(val on: String) : AsteroidQuery()
+
 class AsteroidRepository(
     val apiClient: NasaApiClient,
     private val db: AsteroidDatabase
@@ -27,13 +32,32 @@ class AsteroidRepository(
     val loadingAsteroids: LiveData<Boolean>
         get() = _loadingAsteroids
 
+    private val _asteroidQuery = MutableLiveData<AsteroidQuery>(
+        Span(
+            from = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0),
+            to = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(7)
+        )
+    )
+    val asteroidQuery: LiveData<AsteroidQuery>
+        get() = _asteroidQuery
+
     val pictureOfTheDay: LiveData<PictureOfDay> =
         Transformations.map(db.pictureDao.getPictureOfTheDay()) {
             it?.toDomain()
         }
 
-    val asteroids: LiveData<List<Asteroid>> = Transformations.map(db.asteroidDao.getAsteroids()) {
-        it?.toDomain()
+    val asteroids: LiveData<List<Asteroid>> = Transformations.switchMap(asteroidQuery) { query ->
+        val result = when (query) {
+            is All -> db.asteroidDao.getAsteroids()
+            is Span -> db.asteroidDao.getAsteroidsFromTo(query.from, query.to)
+            is On -> db.asteroidDao.getAsteroidsOn(query.on)
+        }
+        Transformations.map(result) {
+            Timber.d("No returned: ${it.size}")
+            // to make update in the UI obvious since it may be the same set for all and for a week
+            if (query == All) return@map it.toDomain().reversed()
+            it.toDomain()
+        }
     }
 
     suspend fun getAsteroids(start: String, end: String): List<Asteroid>? {
@@ -57,11 +81,10 @@ class AsteroidRepository(
         withContext(Dispatchers.IO) {
             db.asteroidDao.removeOldAsteroids(Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0))
 
-            val asteroidsData = getAsteroids(
+            getAsteroids(
                 start = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0),
                 end = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(7)
             )
-            if (asteroidsData != null) Timber.d("ok") // database.asteroidDao.insertAll(*parsedAsteroids.toDatabaseModel())
         }
     }
 
@@ -73,6 +96,23 @@ class AsteroidRepository(
                 db.pictureDao.insertAll(result.body.toEntity())
             }
         }
+    }
+
+    suspend fun getTodaysAsteroids() = withContext(Dispatchers.IO) {
+        _asteroidQuery.postValue(On(Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0)))
+    }
+
+    suspend fun getAllAsteroids() = withContext(Dispatchers.IO) {
+        _asteroidQuery.postValue(All)
+    }
+
+    suspend fun getWeeksAsteroids() = withContext(Dispatchers.IO) {
+        _asteroidQuery.postValue(
+            Span(
+                from = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0),
+                to = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(7)
+            )
+        )
     }
 }
 

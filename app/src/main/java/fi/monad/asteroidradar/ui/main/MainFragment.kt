@@ -15,7 +15,6 @@ import fi.monad.asteroidradar.persistence.AsteroidDatabase
 import fi.monad.asteroidradar.repository.AsteroidRepository
 
 class MainFragment : Fragment() {
-    private lateinit var binding: MainFragmentBinding
 
     private val viewModel: MainViewModel by lazy {
         val application = requireNotNull(this.activity).application
@@ -68,6 +67,7 @@ class MainFragment : Fragment() {
     }
 
     override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        viewModel.onFilterSelect(item.itemId)
         return true
     }
 }
