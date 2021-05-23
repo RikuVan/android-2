@@ -1,6 +1,8 @@
 package fi.monad.asteroidradar
 
+import android.view.View
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.TextView
 import androidx.core.net.toUri
 import androidx.databinding.BindingAdapter
@@ -52,4 +54,10 @@ fun bindImage(imgView: ImageView, imgUrl: String?) {
             .error(R.drawable.placeholder_picture_of_day)
             .into(imgView)
     }
+}
+
+@BindingAdapter("loadingVisibility")
+fun bindProgressBarVisibility(progrsssBar: ProgressBar, visible: Boolean) {
+    val context = progrsssBar.context
+    progrsssBar.visibility = if (visible) View.VISIBLE else View.GONE
 }

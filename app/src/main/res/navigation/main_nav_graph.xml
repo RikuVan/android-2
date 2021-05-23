@@ -9,9 +9,9 @@
         android:name="fi.monad.asteroidradar.ui.main.MainFragment"
         android:label="fragment_main"
         tools:layout="@layout/main_fragment">
-       <!-- <action
-            android:id="@+id/action_showDetail"
-            app:destination="@id/detailFragment" /> -->
+        <action
+            android:id="@+id/actionShowDetail"
+            app:destination="@id/detail_fragment" />
     </fragment>
 
     <fragment
@@ -19,9 +19,9 @@
         android:name="fi.monad.asteroidradar.ui.detail.DetailFragment"
         android:label="fragment_detail"
         tools:layout="@layout/detail_fragment">
-        <!-- <argument
+        <argument
             android:name="selectedAsteroid"
-            app:argType="com.udacity.asteroidradar.Asteroid" /> -->
+            app:argType="fi.monad.asteroidradar.domain.Asteroid" />
     </fragment>
 
 </navigation>

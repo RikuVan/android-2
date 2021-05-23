@@ -8,7 +8,7 @@ import androidx.recyclerview.widget.RecyclerView
 import fi.monad.asteroidradar.databinding.AsteroidListItemBinding
 import fi.monad.asteroidradar.domain.Asteroid
 
-class MainAsteroidAdapter(private val onClick: AsteroidClickListener) :
+class MainAsteroidAdapter(private val onClick: (Asteroid) -> Unit) :
     ListAdapter<Asteroid, MainAsteroidAdapter.AsteroidViewHolder>(AsteroidDiffCallback) {
 
     class AsteroidViewHolder(private val binding: AsteroidListItemBinding) :
@@ -34,12 +34,10 @@ class MainAsteroidAdapter(private val onClick: AsteroidClickListener) :
     override fun onBindViewHolder(holder: AsteroidViewHolder, position: Int) {
         val asteroid = getItem(position)
         holder.bind(asteroid)
+        holder.itemView.setOnClickListener {
+            onClick.invoke(asteroid)
+        }
     }
-
-    class AsteroidClickListener(val block: (Asteroid) -> Unit) {
-        fun onClick(asteroid: Asteroid) = block(asteroid)
-    }
-
 }
 
 object AsteroidDiffCallback : DiffUtil.ItemCallback<Asteroid>() {

@@ -12,6 +12,7 @@ import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.moshi.MoshiConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.Query
 
@@ -42,7 +43,6 @@ interface NasaApiServiceI {
 
     @GET("planetary/apod")
     suspend fun getPictureOfTheDay(@Query("api_key") apiKey: String = NASA_API_KEY): Response<PictureOfDay>
-
 }
 
 fun getApiServiceImpl(): NasaApiServiceI {

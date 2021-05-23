@@ -1,6 +1,7 @@
 package fi.monad.asteroidradar.repository
 
 import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.Transformations
 import fi.monad.asteroidradar.Constants
 import fi.monad.asteroidradar.domain.Asteroid
@@ -20,11 +21,16 @@ import timber.log.Timber
 class AsteroidRepository(
     val apiClient: NasaApiClient,
     private val db: AsteroidDatabase
-    ) {
+) {
 
-    val pictureOfTheDay: LiveData<PictureOfDay> = Transformations.map(db.pictureDao.getPictureOfTheDay()) {
-        it?.toDomain()
-    }
+    private val _loadingAsteroids = MutableLiveData(false)
+    val loadingAsteroids: LiveData<Boolean>
+        get() = _loadingAsteroids
+
+    val pictureOfTheDay: LiveData<PictureOfDay> =
+        Transformations.map(db.pictureDao.getPictureOfTheDay()) {
+            it?.toDomain()
+        }
 
     val asteroids: LiveData<List<Asteroid>> = Transformations.map(db.asteroidDao.getAsteroids()) {
         it?.toDomain()
@@ -32,6 +38,7 @@ class AsteroidRepository(
 
     suspend fun getAsteroids(start: String, end: String): List<Asteroid>? {
         val result = apiClient.getAsteroids(start, end)
+        _loadingAsteroids.postValue(true)
 
         val parsedResult = result.map {
             parseAsteroidsJsonResult(JSONObject(it.body()))
@@ -39,21 +46,17 @@ class AsteroidRepository(
 
         if (parsedResult.ok) {
             db.asteroidDao.insertAll(*parsedResult.body.toEntity())
+            _loadingAsteroids.postValue(false)
         }
 
         return parsedResult.body
     }
 
-    suspend fun getPictureOfTheDay(): PictureOfDay? {
-        val result = apiClient.getPictureOfTheDay()
-        if (result.failed or !result.ok) {
-            return null
-        }
-        return result.body
-    }
-
     suspend fun refreshAsteroids() {
+        Timber.i("refreshing asteroids")
         withContext(Dispatchers.IO) {
+            db.asteroidDao.removeOldAsteroids(Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0))
+
             val asteroidsData = getAsteroids(
                 start = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(0),
                 end = Constants.API_QUERY_DATE_FORMAT.toFormattedDatePlus(7)
@@ -63,6 +66,7 @@ class AsteroidRepository(
     }
 
     suspend fun refreshPictureOfTheDay() {
+        Timber.i("refreshing picture")
         withContext(Dispatchers.IO) {
             val result = apiClient.getPictureOfTheDay()
             if (result.ok) {
